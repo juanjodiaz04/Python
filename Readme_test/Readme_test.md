@@ -1,34 +1,36 @@
 # 🐦 BirdCLEF Pipeline - Workstation Setup
 
-Este documento describe paso a paso cómo configurar y ejecutar todo el pipeline de entrenamiento e inferencia en la Workstation.
+This repository contains the code for the submission to NeurIPS (BirdCLEF 2025 challenge).
+It provides the complete pipeline for training and inference on a local workstation.
+The workflow integrates BirdNET Analyzer v2.4, which is included within this repository, to generate embeddings used by the classifiers.
 
 ---
 
-## 🔧 1. Verificar e Instalar `ffmpeg`
+## 🔧 1. Verify and Install `ffmpeg`
 
 ```bash
-# Verificar si ffmpeg está instalado
+# Check if ffmpeg is installed
 ffmpeg -version
 
-# Si no está instalado
+# If not installed
 sudo apt update
 sudo apt install ffmpeg
 ```
 
 ---
 
-## 2. Crear el espacio de trabajo
+## 2. Create the Workspace
 
 ```bash
 # Clonar el repositorio
 git clone https://github.com/juanjodiaz04/Clef-25.git Workspace
 cd Workspace
 
-# Eliminar origen para evitar futuros pushes accidentales
+# Remove remote to avoid accidental pushes
 git remote remove origin
 
 cd Local_Training
-# Crear carpetas necesarias
+# Create required folders
 mkdir raw_audios
 mkdir audios
 mkdir embeddings
@@ -38,42 +40,42 @@ mkdir outputs
 
 ---
 
-## 3. Configurar entornos virtuales (Python 3.10 recomendado) (~/Workspace)
+## 3. Set up Virtual Environments (Python 3.10 recommended) (~/Workspace)
 
 ```bash
-# Verificar versión de Python
+# Check Python version
 python --version
 
 cd ..
 
-# Crear entorno virtual
+# Create virtual environments
 py -3.10 -m venv env-class
 py -3.10 -m venv env-emb
 
-# Activar entorno virtual (Linux/Mac)
-source env-class/bin/activate # Entorno de clasificación
-source env-emb/bin/activate   # Entorno de embeddings
+# Activate virtual environment (Linux/Mac)
+source env-class/bin/activate # Classification environment
+source env-emb/bin/activate   # Embeddings environment
 
-# Activar entorno virtual (Windows)
+# Activate virtual environment (Windows)
 source env-class/Scripts/activate
 
-# Desactivar entorno virtual
+# Deactivate virtual environment
 deactivate
 
 ```
 
 ---
 
-## 4. Instalar requerimientos de BirdNET y el Clasificador(~/Workspace)
+## 4. Install Requirements for BirdNET and Classifier (~/Workspace)
 
 ```bash
 
-(Embedder)
+# (Embedder)
 source env-emb/bin/activate
 pip install -r Local_Training/BirdNET-Analyzer-1.5.1/requirements.txt
 deactivate
 
-(Classifier)
+# (Classifier)
 source env-class/bin/activate
 pip install -r Req_classifier.txt
 deactivate
@@ -81,63 +83,64 @@ deactivate
 
 ---
 
-## 5. Segmentar audios (~/Local_Training)
+## 5. Segment Audios (~/Local_Training)
 
 ```bash
 
-# Escoger el entorno de clasificación desde (~/Workspace)
+# Activate classification environment from (~/Workspace)
 source env-class/bin/activate
 
-# Moverse a la carpeta de Local_Training
+# Move to Local_Training folder
 cd Local_Training
 
-# Ejecutar Segmentación de Audios a 5s
+# Run segmentation of audios into 5s clips
 python Segment_Audio/segment.py --threads 16
 
 ```
 
 ---
 
-## 6. Obtener los Embeddings (~/BirdNET-Analyzer-1.5.1)
+## 6. Generate Embeddings (~/BirdNET-Analyzer-1.5.1)
 
 ```bash
 
-# Moverse a la carpeta de BirdNET-Analyzer
+# Move to BirdNET-Analyzer folder
 cd BirdNET-Analyzer-1.5.1
 
-# Ejecutar generación de embeddings
+# Run embedding generation
 python -m birdnet_analyzer.embeddings --i ../audios/ --o ../embeddings/ --threads 16
 deactivate
 
-# Ejecutar generación de embeddings por folder
+# Embedding generation by folder
 python -m birdnet_analyzer.embeddings --i ../TVT/train/ --o ../TVT/emb_train/ --threads 16
 python -m birdnet_analyzer.embeddings --i ../TVT/val/ --o ../embeddings/emb_val/ --threads 16
 python -m birdnet_analyzer.embeddings --i ../TVT/test/ --o ../embeddings/emb_test --threads 16
+
 
 ```
 
 ---
 
-## 6. Convertir embeddings a CSV (~Local_Training)
+## 6. Convert Embeddings to CSV (~Local_Training)
 
 ```bash
 
-# Moverse al Workspace
+# Move to Workspace
 cd ../.. 
 
-# Cambiar al entorno de clasificación desde (~/Workspace)
+# Activate classification environment from (~/Workspace)
 source env-class/bin/activate
 
-# Moverse a la carpeta de Local_Training
+# Move to Local_Training folder
 cd Local_Training
 
-# Versión sin solapamiento (chunks independientes de 5s)
+# Non-overlapping version (independent 5s chunks)
 python embed2csv/embed_MT_P_NOV.py --threads 16
 
-# Versión con solapamiento (overlapping chunks)
+# Overlapping version
 python embed2csv/embed_MT_P_OV.py --threads 16 
 
-# CSV por folder
+# CSV by folder
 python embed2csv/embed_MT_P_OV.py --input TVT/emb_train/ --output embeddings_csv/train.csv --threads 16
 python embed2csv/embed_MT_P_OV.py --input TVT/emb_val/ --output embeddings_csv/val.csv --threads 16
 python embed2csv/embed_MT_P_OV.py --input TVT/emb_test/ --output embeddings_csv/test.csv --threads 16 
@@ -146,13 +149,13 @@ python embed2csv/embed_MT_P_OV.py --input TVT/emb_test/ --output embeddings_csv/
 
 ---
 
-## 7. Entrenar un modelo (~Local_Training)
+## 7. Train a Model (~Local_Training)
 
 ```bash
 
 python Train_Inference/train.py --epochs 40 --model_type mlp
 
-# Entrenamiento con folders
+# Training with 60/20/20 folders
 python Train_Inference/train_TVT.py --epochs 40 --model_type mlp
 
 ```
@@ -161,4 +164,10 @@ python Train_Inference/train_TVT.py --epochs 40 --model_type mlp
 
 ```bash 
 
-python Train_Inference/inf_5s.py     --csv embeddings_csv/embeddings_MT_overlap.csv     --modelo outputs/run_06_0028/modelo_efficientnet_b7.pt     --labels outputs/run_06_0028/label_encoder.pkl      --sample-sub CSV/sample_submission.csv     --output outputs/run_06_0028/submission.csv --model_type efficientnet_b7
+python Train_Inference/inf_5s.py \
+    --csv embeddings_csv/embeddings_MT_overlap.csv \
+    --modelo outputs/run_06_0028/modelo_efficientnet_b7.pt \
+    --labels outputs/run_06_0028/label_encoder.pkl \
+    --sample-sub CSV/sample_submission.csv \
+    --output outputs/run_06_0028/submission.csv \
+    --model_type efficientnet_b7
