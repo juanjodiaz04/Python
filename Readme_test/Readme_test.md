@@ -1,8 +1,9 @@
-# 🐦 BirdCLEF Pipeline - Workstation Setup
+# 🐦 BirdCLEF Pipeline – Workstation Setup  
 
-This repository contains the code for the submission to NeurIPS (BirdCLEF 2025 challenge).
-It provides the complete pipeline for training and inference on a local workstation.
-The workflow integrates BirdNET Analyzer v2.4, which is included within this repository, to generate embeddings used by the classifiers.
+This repository contains the code for the submission to **NeurIPS (BirdCLEF 2025 challenge)**.  
+It provides the complete pipeline for training and inference on a local workstation.  
+The workflow integrates **BirdNET Analyzer v2.4**, included within this repository, originally developed by the [BirdNET team](https://github.com/birdnet-team/BirdNET-Analyzer), to generate embeddings used by the classifiers.  
+
 
 ---
 
